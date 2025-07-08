@@ -1,0 +1,95 @@
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Sample Cloudformation template"
+
+
+Parameters:
+  myinstancename:
+    Type: String
+
+Resources:
+  
+  myvpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+  
+  mysubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myvpc
+      CidrBlock: 192.168.100.0/24
+
+  myroutetable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myvpc
+  
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  myIGAttachVPC:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref myInternetGateway
+      VpcId: !Ref myvpc
+  
+  myroute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref myroutetable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref myInternetGateway
+  
+  myRTtoSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref myroutetable
+      SubnetId: !Ref mysubnet
+  
+  mysecuritygroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for protect web server.
+      SecurityGroupEgress: 
+        - CidrIp: 106.184.157.34/32
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      VpcId: !Ref myvpc
+
+  myinstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      CreditSpecification: 
+        CPUCredits: standard
+      ImageId: ami-078772dab3242ee11
+      InstanceType: t3.micro
+      UserData: 
+        Fn::Base64: |
+          #!/bin/bash
+          dnf update -y
+          dnf install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet:
+            - !Ref mysecuritygroup
+          SubnetId: !Ref mysubnet
+      Tags:
+        - Key: Name
+          Value: !Sub ${myinstancename}
+
+Outputs:
+  exportsubnetid:
+    Value: !Ref mysubnet
+    Export:
+      Name: subnetid-for-other-ec2instance
+
+  exportsgid:
+    Value: !Ref mysecuritygroup
+    Export:
+      Name: sgid-for-other-ec2instance 
+    

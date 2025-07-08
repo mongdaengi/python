@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "output import test Cloudformation template"
+
+Resources:
+  myinstance2:
+      Type: AWS::EC2::Instance
+      Properties:
+        CreditSpecification: 
+          CPUCredits: standard
+        ImageId: ami-078772dab3242ee11
+        InstanceType: t3.micro
+        UserData: 
+          Fn::Base64: |
+            #!/bin/bash
+            dnf update -y
+            dnf install -y httpd
+            systemctl start httpd
+            systemctl enable httpd
+        NetworkInterfaces: 
+          - AssociatePublicIpAddress: "true"
+            DeviceIndex: "0"
+            GroupSet:
+              - Fn::ImportValue : sgid-for-other-ec2instance
+            SubnetId:
+              Fn::ImportValue: subnetid-for-other-ec2instance
+        Tags:
+          - Key: Name
+            Value: import-test-instance
